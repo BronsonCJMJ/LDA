@@ -1,8 +1,21 @@
 steps:
+  # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts', '.']
+    args:
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts:$COMMIT_SHA'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts:latest'
+      - '.'
+
+  # Push the image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts']
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts:$COMMIT_SHA'
+
+  # Deploy to Cloud Run (update image only, preserve existing env vars)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -10,8 +23,13 @@ steps:
       - 'services'
       - 'update'
       - 'labradordarts'
-      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts:$COMMIT_SHA'
       - '--region=us-central1'
       - '--platform=managed'
+
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/labradordarts:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
