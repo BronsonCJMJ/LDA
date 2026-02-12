@@ -1,4 +1,18 @@
+import { useState, useEffect } from 'react'
+import api from '../services/api'
+
+interface BoardMember { name: string; title: string; initials: string }
+
 export default function About() {
+  const [boardMembers, setBoardMembers] = useState<BoardMember[]>([])
+
+  useEffect(() => {
+    api.get('/settings').then(({ data }) => {
+      const bm = data.data?.boardMembers;
+      if (Array.isArray(bm)) setBoardMembers(bm);
+    }).catch(() => {});
+  }, [])
+
   return (
     <section className="page-section">
       <div className="container">
@@ -23,26 +37,21 @@ export default function About() {
 
         <h2 className="section-heading" style={{ marginTop: '2rem' }}>Executive Board</h2>
         <div className="board-grid">
-          <div className="board-member animate-in delay-1">
-            <div className="board-member-avatar">D</div>
-            <h4>Des</h4>
-            <p>President</p>
-          </div>
-          <div className="board-member animate-in delay-2">
-            <div className="board-member-avatar">VP</div>
-            <h4>Vice President</h4>
-            <p>Vice President</p>
-          </div>
-          <div className="board-member animate-in delay-3">
-            <div className="board-member-avatar">S</div>
-            <h4>Secretary</h4>
-            <p>Secretary</p>
-          </div>
-          <div className="board-member animate-in delay-4">
-            <div className="board-member-avatar">T</div>
-            <h4>Treasurer</h4>
-            <p>Treasurer</p>
-          </div>
+          {boardMembers.length > 0 ? (
+            boardMembers.map((m, i) => (
+              <div key={i} className={`board-member animate-in delay-${Math.min(i + 1, 5)}`}>
+                <div className="board-member-avatar">{m.initials || m.name.charAt(0)}</div>
+                <h4>{m.name}</h4>
+                <p>{m.title}</p>
+              </div>
+            ))
+          ) : (
+            <div className="board-member animate-in delay-1">
+              <div className="board-member-avatar">DM</div>
+              <h4>Des Montague</h4>
+              <p>President</p>
+            </div>
+          )}
         </div>
 
         <div className="sidebar-card sidebar-card-accent animate-in delay-3" style={{ marginTop: '3rem', maxWidth: '500px' }}>

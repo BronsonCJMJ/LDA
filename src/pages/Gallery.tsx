@@ -1,33 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import api from '../services/api'
 
-interface GalleryItem {
-  title: string
-  date: string
-  category: string
-  image?: string
-  icon?: string
+interface Album {
+  id: string;
+  title: string;
+  description: string | null;
+  eventDate: string | null;
+  season: string | null;
+  coverImageUrl: string | null;
+  _count: { photos: number };
 }
 
-const galleryItems: GalleryItem[] = [
-  { title: 'Team Labrador — NDFC Nationals', date: '2025', category: '2024-25', image: '/team-labrador.jpg' },
-  { title: 'Winter Regional 2026', date: 'Feb 2026', category: '2025-26', icon: '🎯' },
-  { title: 'Holiday Classic', date: 'Dec 2025', category: '2025-26', icon: '🏆' },
-  { title: 'Season Opener', date: 'Oct 2025', category: '2025-26', icon: '🎯' },
-  { title: 'Provincial Finals', date: 'May 2025', category: '2024-25', icon: '🏅' },
-  { title: 'Spring Doubles', date: 'Apr 2025', category: '2024-25', icon: '🎯' },
-  { title: 'Awards Banquet', date: 'Jun 2025', category: '2024-25', icon: '🏆' },
-  { title: 'Labrador Open 2025', date: 'Mar 2025', category: '2024-25', icon: '🎯' },
-  { title: 'Community Night', date: 'Nov 2024', category: '2024-25', icon: '🎯' },
-]
-
-const filters = ['All', '2025-26', '2024-25']
-
 export default function Gallery() {
+  const [albums, setAlbums] = useState<Album[]>([])
+  const [seasons, setSeasons] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState('All')
+  const [search, setSearch] = useState('')
 
-  const filtered = activeFilter === 'All'
-    ? galleryItems
-    : galleryItems.filter(item => item.category === activeFilter)
+  useEffect(() => {
+    api.get('/gallery').then(({ data }) => {
+      const list: Album[] = data.data || [];
+      setAlbums(list);
+      const s = [...new Set(list.map(a => a.season).filter(Boolean))] as string[];
+      setSeasons(s);
+    }).catch(() => {});
+  }, [])
+
+  const filtered = albums
+    .filter(a => activeFilter === 'All' || a.season === activeFilter)
+    .filter(a => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return a.title.toLowerCase().includes(q) ||
+        (a.description || '').toLowerCase().includes(q) ||
+        (a.season || '').toLowerCase().includes(q)
+    })
 
   return (
     <section className="page-section">
@@ -38,32 +46,48 @@ export default function Gallery() {
           <p>Photos from tournaments, events, and community gatherings across Labrador.</p>
         </div>
 
-        <div className="gallery-filter">
-          {filters.map(f => (
-            <button
-              key={f}
-              className={`filter-btn ${activeFilter === f ? 'active' : ''}`}
-              onClick={() => setActiveFilter(f)}
-            >
-              {f === 'All' ? 'All Seasons' : `${f} Season`}
-            </button>
-          ))}
+        <div className="page-controls animate-in">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search albums..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {seasons.length > 0 && (
+            <div className="controls-right">
+              <div className="gallery-filter">
+                <button className={`filter-btn ${activeFilter === 'All' ? 'active' : ''}`} onClick={() => setActiveFilter('All')}>All</button>
+                {seasons.map(s => (
+                  <button key={s} className={`filter-btn ${activeFilter === s ? 'active' : ''}`} onClick={() => setActiveFilter(s)}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="gallery-grid">
-          {filtered.map((item, i) => (
-            <div key={i} className={`gallery-item animate-in delay-${Math.min(i + 1, 5)}`}>
-              {item.image ? (
-                <img src={item.image} alt={item.title} className="gallery-photo" />
+          {filtered.map((album, i) => (
+            <Link to={`/gallery/${album.id}`} key={album.id} className={`gallery-item animate-in delay-${Math.min(i + 1, 5)}`}>
+              {album.coverImageUrl ? (
+                <img src={album.coverImageUrl} alt={album.title} className="gallery-photo" />
               ) : (
-                <div className="gallery-placeholder">{item.icon}</div>
+                <div className="gallery-placeholder">
+                  <span style={{ fontSize: '2rem' }}>{album._count.photos}</span>
+                  <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>photos</span>
+                </div>
               )}
               <div className="gallery-overlay">
-                <h4>{item.title}</h4>
-                <span>{item.date}</span>
+                <h4>{album.title}</h4>
+                <span>{album._count.photos} photo{album._count.photos !== 1 ? 's' : ''}{album.eventDate ? ` \u00b7 ${new Date(album.eventDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ''}</span>
               </div>
-            </div>
+            </Link>
           ))}
+          {filtered.length === 0 && (
+            <p className="empty-state">{search ? 'No albums match your search.' : 'No gallery albums yet. Check back soon.'}</p>
+          )}
         </div>
       </div>
     </section>

@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("admin") // "super_admin" | "admin"
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  newsArticles NewsArticle[]
+
+  @@map("admins")
+}
+
+model NewsArticle {
+  id          String    @id @default(uuid())
+  title       String
+  body        String
+  excerpt     String?
+  tag         String    @default("update") // "official" | "deadline" | "update" | "event"
+  imageUrl    String?
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  author Admin @relation(fields: [authorId], references: [id])
+
+  @@map("news_articles")
+}
+
+model Tournament {
+  id                   String    @id @default(uuid())
+  name                 String
+  description          String?
+  venue                String?
+  location             String?
+  startDate            DateTime
+  endDate              DateTime?
+  registrationDeadline DateTime?
+  registrationFee      Float?
+  entryFees            Json?
+  payoutStructure      Json?
+  status               String    @default("upcoming") // "upcoming" | "open" | "in_progress" | "completed" | "cancelled"
+  type                 String?
+  flyerImageUrl        String?
+  season               String?
+  sortOrder            Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  results TournamentResult[]
+  stats   TournamentStat[]
+
+  @@map("tournaments")
+}
+
+model TournamentResult {
+  id           String @id @default(uuid())
+  tournamentId String
+  category     String
+  placement    Int
+  playerNames  String
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@map("tournament_results")
+}
+
+model TournamentStat {
+  id           String @id @default(uuid())
+  tournamentId String
+  category     String
+  statType     String // "fewest_501_darts" | "highest_match_avg" | "highest_checkout"
+  rank         Int
+  value        String
+  detail       String?
+  playerNames  String
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@map("tournament_stats")
+}
+
+model Member {
+  id                   String    @id @default(uuid())
+  firstName            String
+  lastName             String
+  email                String?
+  phone                String?
+  dateOfBirth          DateTime?
+  sex                  String?
+  mailingAddress       String?
+  mcpNumber            String?
+  idDocumentUrl        String?
+  membershipStatus     String    @default("pending") // "active" | "inactive" | "pending"
+  membershipPaid       Boolean   @default(false)
+  membershipType       String    @default("adult") // "adult" | "youth"
+  zone                 String?
+  tournamentAssignment String?
+  qualifiedProvincials Boolean   @default(false)
+  season               String?
+  registrationDate     DateTime?
+  notes                String?
+  ton80PlayerId        String?   // Ton80 player ton80Id for stats integration
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("members")
+}
+
+model GalleryAlbum {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  eventDate     DateTime?
+  season        String?
+  coverImageUrl String?
+  isPublished   Boolean   @default(true)
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  photos GalleryPhoto[]
+
+  @@map("gallery_albums")
+}
+
+model GalleryPhoto {
+  id        String   @id @default(uuid())
+  albumId   String
+  imageUrl  String
+  caption   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  album GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@map("gallery_photos")
+}
+
+model Document {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  fileUrl     String
+  fileType    String
+  fileSize    Int?
+  category    String  @default("general") // "registration" | "rules" | "templates" | "bylaws" | "general"
+  isPublished Boolean @default(true)
+  sortOrder   Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("documents")
+}
+
+model FormSubmission {
+  id            String   @id @default(uuid())
+  formType      String   // "registration" | "protest_appeal" | "club_affiliation" | "contact"
+  data          Json
+  email         String?
+  name          String?
+  status        String   @default("new") // "new" | "reviewed" | "approved" | "rejected"
+  idDocumentUrl String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("form_submissions")
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}

@@ -1,6 +1,54 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../services/api'
+
+interface StatCard { label: string; value: string; description: string }
+interface NewsItem { id: string; title: string; excerpt: string | null; body: string; tag: string; publishedAt: string | null; createdAt: string }
+interface Tournament { id: string; name: string; startDate: string; status: string; type: string | null }
+interface Doc { id: string; title: string; fileType: string; fileSize: number | null }
+
+const tagClass = (tag: string) => {
+  const map: Record<string, string> = { official: 'tag-official', deadline: 'tag-deadline', update: 'tag-update', event: 'tag-event' }
+  return map[tag] || 'tag-update'
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export default function Home() {
+  const [stats, setStats] = useState<Record<string, StatCard>>({})
+  const [heroText, setHeroText] = useState({ eyebrow: 'Official Association Portal', title: 'Labrador Darts\nAssociation', subtitle: 'The central hub for tournament schedules, league standings, and community news across the Big Land.' })
+  const [news, setNews] = useState<NewsItem[]>([])
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [documents, setDocuments] = useState<Doc[]>([])
+
+  useEffect(() => {
+    api.get('/settings').then(({ data }) => {
+      const s = data.data
+      if (s?.stats) setStats(s.stats)
+      if (s?.heroText) setHeroText({ ...heroText, ...s.heroText })
+    }).catch(() => {})
+
+    api.get('/news?limit=3').then(({ data }) => setNews(data.data?.articles || [])).catch(() => {})
+    api.get('/tournaments').then(({ data }) => {
+      const upcoming = (data.data || []).filter((t: Tournament) => t.status !== 'completed' && t.status !== 'cancelled').slice(0, 3)
+      setTournaments(upcoming)
+    }).catch(() => {})
+    api.get('/documents?limit=3').then(({ data }) => setDocuments((data.data || []).slice(0, 3))).catch(() => {})
+  }, [])
+
+  const statKeys = ['nextTournament', 'activeMembers', 'currentSeason']
+  const statDefaults: Record<string, StatCard> = {
+    nextTournament: { label: 'Next Tournament', value: 'TBD', description: '' },
+    activeMembers: { label: 'Active Members', value: '--', description: '' },
+    currentSeason: { label: 'Current Season', value: '2025-26', description: '' },
+  }
+
+  const formatSize = (bytes: number | null) => {
+    if (!bytes) return ''
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
   return (
     <>
       {/* Hero */}
@@ -8,11 +56,9 @@ export default function Home() {
         <div className="hero-content animate-in">
           <div className="hero-layout">
             <div>
-              <span className="hero-eyebrow">Official Association Portal</span>
-              <h1 className="hero-title">Labrador Darts<br />Association</h1>
-              <p className="hero-subtitle">
-                The central hub for tournament schedules, league standings, and community news across the Big Land.
-              </p>
+              <span className="hero-eyebrow">{heroText.eyebrow}</span>
+              <h1 className="hero-title" dangerouslySetInnerHTML={{ __html: heroText.title.replace('\n', '<br />') }} />
+              <p className="hero-subtitle">{heroText.subtitle}</p>
               <div className="hero-actions">
                 <Link to="/forms" className="btn btn-white">Join the 2026 Season</Link>
                 <Link to="/tournaments" className="btn btn-outline-white">View Calendar</Link>
@@ -27,21 +73,16 @@ export default function Home() {
       <section className="stats-section">
         <div className="container">
           <div className="stats-grid">
-            <div className="stat-card animate-in delay-1">
-              <span className="stat-label">Next Tournament</span>
-              <span className="stat-value">Mar 12</span>
-              <span className="stat-desc">Labrador Open — Regional Qualifier</span>
-            </div>
-            <div className="stat-card animate-in delay-2">
-              <span className="stat-label">Active Members</span>
-              <span className="stat-value">142</span>
-              <span className="stat-desc">Registered for 2025–26 Season</span>
-            </div>
-            <div className="stat-card animate-in delay-3">
-              <span className="stat-label">Current Season</span>
-              <span className="stat-value">2025–26</span>
-              <span className="stat-desc">Week 14 — Winter League</span>
-            </div>
+            {statKeys.map((key, i) => {
+              const s = stats[key] || statDefaults[key]
+              return (
+                <div key={key} className={`stat-card animate-in delay-${i + 1}`}>
+                  <span className="stat-label">{s.label}</span>
+                  <span className="stat-value">{s.value}</span>
+                  <span className="stat-desc">{s.description}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -53,33 +94,17 @@ export default function Home() {
             <div>
               <h2 className="section-heading">Latest News</h2>
               <div className="card">
-                <article className="news-card animate-in delay-1">
-                  <div className="news-meta">
-                    <span className="news-tag tag-official">Official</span>
-                    <time>February 24, 2026</time>
-                  </div>
-                  <h3><Link to="/news">Winter Regional Results Released</Link></h3>
-                  <p>The official scores from Happy Valley-Goose Bay are now verified. Top 8 seeds have been notified of their provincial advancement. Full bracket available in the tournament section.</p>
-                </article>
-
-                <article className="news-card animate-in delay-2">
-                  <div className="news-meta">
-                    <span className="news-tag tag-deadline">Deadline</span>
-                    <time>February 10, 2026</time>
-                  </div>
-                  <h3><Link to="/news">Roster Update Deadline Approaching</Link></h3>
-                  <p>Clubs must finalize their player lists by midnight Friday. Incomplete forms will result in a points penalty for the remainder of the winter session.</p>
-                </article>
-
-                <article className="news-card animate-in delay-3">
-                  <div className="news-meta">
-                    <span className="news-tag tag-update">Update</span>
-                    <time>January 28, 2026</time>
-                  </div>
-                  <h3><Link to="/news">New NDFC Rule Changes for 2026</Link></h3>
-                  <p>The National Darts Federation of Canada has issued updated guidelines regarding equipment standards and scoring procedures for the 2026 competitive season.</p>
-                </article>
-
+                {news.map((a, i) => (
+                  <article key={a.id} className={`news-card animate-in delay-${i + 1}`}>
+                    <div className="news-meta">
+                      <span className={`news-tag ${tagClass(a.tag)}`}>{a.tag}</span>
+                      <time>{new Date(a.publishedAt || a.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</time>
+                    </div>
+                    <h3><Link to="/news">{a.title}</Link></h3>
+                    <p>{a.excerpt || a.body.slice(0, 200)}</p>
+                  </article>
+                ))}
+                {news.length === 0 && <p style={{ padding: '1rem', opacity: 0.6 }}>No news yet.</p>}
                 <Link to="/news" className="view-all-link">View All News &rarr;</Link>
               </div>
             </div>
@@ -89,36 +114,22 @@ export default function Home() {
               <div className="sidebar-card">
                 <h3 className="sidebar-heading">Upcoming Events</h3>
                 <ul className="event-list">
-                  <li className="event-item event-highlight">
-                    <div className="event-date-badge">
-                      <span className="date-month">Mar</span>
-                      <span className="date-day">12</span>
-                    </div>
-                    <div>
-                      <strong>Labrador Open</strong>
-                      <span>Regional Qualifier</span>
-                    </div>
-                  </li>
-                  <li className="event-item">
-                    <div className="event-date-badge">
-                      <span className="date-month">Apr</span>
-                      <span className="date-day">04</span>
-                    </div>
-                    <div>
-                      <strong>Mixed Doubles</strong>
-                      <span>Open Entry</span>
-                    </div>
-                  </li>
-                  <li className="event-item">
-                    <div className="event-date-badge">
-                      <span className="date-month">May</span>
-                      <span className="date-day">20</span>
-                    </div>
-                    <div>
-                      <strong>Season Finale</strong>
-                      <span>Championship Night</span>
-                    </div>
-                  </li>
+                  {tournaments.map((t, i) => {
+                    const d = new Date(t.startDate)
+                    return (
+                      <li key={t.id} className={`event-item ${i === 0 ? 'event-highlight' : ''}`}>
+                        <div className="event-date-badge">
+                          <span className="date-month">{SHORT_MONTHS[d.getMonth()]}</span>
+                          <span className="date-day">{d.getDate()}</span>
+                        </div>
+                        <div>
+                          <strong>{t.name}</strong>
+                          <span>{t.type?.replace('_', ' ') || t.status}</span>
+                        </div>
+                      </li>
+                    )
+                  })}
+                  {tournaments.length === 0 && <li className="event-item"><div><span>No upcoming events</span></div></li>}
                 </ul>
                 <Link to="/tournaments" className="sidebar-link">Full Schedule &rarr;</Link>
               </div>
@@ -126,27 +137,21 @@ export default function Home() {
               <div className="sidebar-card">
                 <h3 className="sidebar-heading">Quick Forms</h3>
                 <div className="form-links">
-                  <a href="#" className="form-link-item">
-                    <span className="form-icon">PDF</span>
-                    <div>
-                      <strong>Registration Form 2026</strong>
-                      <span>124 KB</span>
-                    </div>
-                  </a>
-                  <a href="#" className="form-link-item">
-                    <span className="form-icon">PDF</span>
-                    <div>
-                      <strong>Score Sheet Template</strong>
-                      <span>89 KB</span>
-                    </div>
-                  </a>
-                  <a href="#" className="form-link-item">
-                    <span className="form-icon">PDF</span>
-                    <div>
-                      <strong>LDA Bylaws</strong>
-                      <span>2.1 MB</span>
-                    </div>
-                  </a>
+                  {documents.map(doc => (
+                    <Link to="/forms" key={doc.id} className="form-link-item">
+                      <span className="form-icon">{doc.fileType.toUpperCase()}</span>
+                      <div>
+                        <strong>{doc.title}</strong>
+                        <span>{formatSize(doc.fileSize)}</span>
+                      </div>
+                    </Link>
+                  ))}
+                  {documents.length === 0 && (
+                    <Link to="/forms" className="form-link-item">
+                      <span className="form-icon">PDF</span>
+                      <div><strong>View Forms</strong><span>Documents &amp; registration</span></div>
+                    </Link>
+                  )}
                 </div>
                 <Link to="/forms" className="sidebar-link">All Documents &rarr;</Link>
               </div>

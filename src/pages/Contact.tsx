@@ -1,11 +1,29 @@
 import { useState } from 'react'
+import api from '../services/api'
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitted(true)
+    setSending(true)
+    setError('')
+    try {
+      await api.post('/forms/submit', {
+        formType: 'contact',
+        name: form.name,
+        email: form.email,
+        data: { subject: form.subject, message: form.message },
+      })
+      setSubmitted(true)
+    } catch {
+      setError('Failed to send message. Please try again.')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -23,23 +41,24 @@ export default function Contact() {
               <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
                 <h3 style={{ color: 'var(--green-700)', marginBottom: '0.5rem' }}>Message Sent</h3>
                 <p>Thank you for reaching out. We'll get back to you as soon as possible.</p>
-                <button className="btn btn-primary" onClick={() => setSubmitted(false)} style={{ marginTop: '1rem' }}>
+                <button className="btn btn-primary" onClick={() => { setSubmitted(false); setForm({ name: '', email: '', subject: '', message: '' }); }} style={{ marginTop: '1rem' }}>
                   Send Another Message
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
+                {error && <div className="form-error">{error}</div>}
                 <div className="form-group">
                   <label htmlFor="name">Full Name</label>
-                  <input type="text" id="name" placeholder="Your name" required />
+                  <input type="text" id="name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Your name" required />
                 </div>
                 <div className="form-group">
                   <label htmlFor="email">Email Address</label>
-                  <input type="email" id="email" placeholder="you@example.com" required />
+                  <input type="email" id="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="you@example.com" required />
                 </div>
                 <div className="form-group">
                   <label htmlFor="subject">Subject</label>
-                  <select id="subject" required>
+                  <select id="subject" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} required>
                     <option value="">Select a subject...</option>
                     <option value="membership">Membership Inquiry</option>
                     <option value="tournament">Tournament Information</option>
@@ -50,9 +69,11 @@ export default function Contact() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="message">Message</label>
-                  <textarea id="message" placeholder="How can we help?" required />
+                  <textarea id="message" value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="How can we help?" required />
                 </div>
-                <button type="submit" className="btn btn-primary">Send Message</button>
+                <button type="submit" className="btn btn-primary" disabled={sending}>
+                  {sending ? 'Sending...' : 'Send Message'}
+                </button>
               </form>
             )}
           </div>
@@ -60,7 +81,7 @@ export default function Contact() {
           <div className="contact-info-cards animate-in delay-2">
             <div className="contact-info-card">
               <h4>Email</h4>
-              <p><a href="mailto:info@labradordarts.ca">info@labradordarts.ca</a></p>
+              <p><a href="mailto:labradordarts23@gmail.com">labradordarts23@gmail.com</a></p>
             </div>
             <div className="contact-info-card">
               <h4>Facebook</h4>
@@ -72,7 +93,7 @@ export default function Contact() {
             </div>
             <div className="contact-info-card">
               <h4>NDFC Affiliation</h4>
-              <p>For national inquiries, contact the <a href="#" target="_blank" rel="noopener noreferrer">National Darts Federation of Canada</a>.</p>
+              <p>For national inquiries, contact the <a href="https://www.ndfc.ca/page/14819/Contacts" target="_blank" rel="noopener noreferrer">National Darts Federation of Canada</a>.</p>
             </div>
           </div>
         </div>
