@@ -1,5 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
+
+interface BoardMember {
+  name: string;
+  title: string;
+  initials: string;
+  bio: string;
+  photo: string;      // GCS object path or static path
+  photoUrl?: string;   // resolved signed URL (transient, from API)
+}
 
 export default function SiteSettings() {
   const [settings, setSettings] = useState<Record<string, any>>({});
@@ -7,9 +16,12 @@ export default function SiteSettings() {
   const [message, setMessage] = useState('');
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionResult, setConnectionResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
   // Track whether API key was edited (so we don't overwrite with the masked version)
   const [apiKeyEdited, setApiKeyEdited] = useState(false);
+
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   useEffect(() => {
     // Admin endpoint includes sensitive settings (with API key masked)
@@ -37,6 +49,61 @@ export default function SiteSettings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const boardMembers: BoardMember[] = settings.boardMembers || [];
+
+  const updateMember = (index: number, field: string, value: string) => {
+    const bm = [...boardMembers];
+    bm[index] = { ...bm[index], [field]: value };
+    update('boardMembers', bm);
+  };
+
+  const removeMember = (index: number) => {
+    update('boardMembers', boardMembers.filter((_, j) => j !== index));
+  };
+
+  const addMember = () => {
+    update('boardMembers', [...boardMembers, { name: '', title: '', initials: '', bio: '', photo: '' }]);
+  };
+
+  const moveMember = (index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= boardMembers.length) return;
+    const bm = [...boardMembers];
+    [bm[index], bm[newIndex]] = [bm[newIndex], bm[index]];
+    update('boardMembers', bm);
+  };
+
+  const uploadPhoto = async (index: number, file: File) => {
+    setUploadingIndex(index);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+      formData.append('index', String(index));
+      const { data } = await api.post('/settings/board-member-photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (data.success) {
+        const bm = [...boardMembers];
+        bm[index] = { ...bm[index], photo: data.data.photo, photoUrl: data.data.photoUrl };
+        update('boardMembers', bm);
+      }
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+      setMessage('Photo upload failed');
+      setTimeout(() => setMessage(''), 3000);
+    } finally {
+      setUploadingIndex(null);
+    }
+  };
+
+  const getPhotoSrc = (m: BoardMember): string | null => {
+    // Prefer resolved signed URL from API
+    if (m.photoUrl) return m.photoUrl;
+    // Static paths work directly
+    if (m.photo?.startsWith('/')) return m.photo;
+    return null;
   };
 
   const ton80 = settings.ton80 || { apiUrl: 'https://ton80.ca/api/v1', apiKey: '', orgSlug: '' };
@@ -110,28 +177,83 @@ export default function SiteSettings() {
       </section>
 
       <section className="admin-settings-section">
-        <h2>Board Members</h2>
-        {(settings.boardMembers || []).map((m: any, i: number) => (
-          <div key={i} className="admin-form-grid" style={{ marginBottom: '0.5rem' }}>
-            <label>Name <input type="text" value={m.name} onChange={(e) => {
-              const bm = [...(settings.boardMembers || [])];
-              bm[i] = { ...bm[i], name: e.target.value };
-              update('boardMembers', bm);
-            }} /></label>
-            <label>Title <input type="text" value={m.title} onChange={(e) => {
-              const bm = [...(settings.boardMembers || [])];
-              bm[i] = { ...bm[i], title: e.target.value };
-              update('boardMembers', bm);
-            }} /></label>
-            <label>Initials <input type="text" value={m.initials} onChange={(e) => {
-              const bm = [...(settings.boardMembers || [])];
-              bm[i] = { ...bm[i], initials: e.target.value };
-              update('boardMembers', bm);
-            }} /></label>
-            <button onClick={() => update('boardMembers', (settings.boardMembers || []).filter((_: any, j: number) => j !== i))} className="btn btn-secondary">Remove</button>
-          </div>
-        ))}
-        <button className="btn btn-secondary" onClick={() => update('boardMembers', [...(settings.boardMembers || []), { name: '', title: '', initials: '' }])}>+ Add Board Member</button>
+        <h2>Executive Board Members</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+          Manage the executive board displayed on the About page. Use the arrows to reorder members.
+        </p>
+        {boardMembers.map((m, i) => {
+          const photoSrc = getPhotoSrc(m);
+          return (
+            <div key={i} className="board-member-card">
+              <div className="board-member-card-header">
+                <div className="board-member-card-order">
+                  <button
+                    className="btn-icon"
+                    onClick={() => moveMember(i, -1)}
+                    disabled={i === 0}
+                    title="Move up"
+                  >&#9650;</button>
+                  <span className="board-member-card-num">{i + 1}</span>
+                  <button
+                    className="btn-icon"
+                    onClick={() => moveMember(i, 1)}
+                    disabled={i === boardMembers.length - 1}
+                    title="Move down"
+                  >&#9660;</button>
+                </div>
+
+                <div className="board-member-card-photo">
+                  {uploadingIndex === i ? (
+                    <div className="board-member-card-photo-placeholder">
+                      <span className="admin-spinner-small" />
+                    </div>
+                  ) : photoSrc ? (
+                    <img src={photoSrc} alt={m.name} />
+                  ) : (
+                    <div className="board-member-card-photo-placeholder">
+                      {m.initials || m.name?.charAt(0) || '?'}
+                    </div>
+                  )}
+                  <input
+                    ref={(el) => { fileInputRefs.current[i] = el; }}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadPhoto(i, file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => fileInputRefs.current[i]?.click()}
+                    disabled={uploadingIndex === i}
+                  >
+                    {photoSrc ? 'Change Photo' : 'Upload Photo'}
+                  </button>
+                </div>
+
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => removeMember(i)}
+                  title="Remove member"
+                >Remove</button>
+              </div>
+
+              <div className="admin-form-grid">
+                <label>Name <input type="text" value={m.name} onChange={(e) => updateMember(i, 'name', e.target.value)} /></label>
+                <label>Title / Role <input type="text" value={m.title} onChange={(e) => updateMember(i, 'title', e.target.value)} /></label>
+                <label>Initials <input type="text" value={m.initials} maxLength={3} onChange={(e) => updateMember(i, 'initials', e.target.value)} /></label>
+              </div>
+              <label style={{ marginTop: '0.5rem', display: 'block' }}>
+                Bio
+                <textarea rows={2} value={m.bio || ''} onChange={(e) => updateMember(i, 'bio', e.target.value)} placeholder="Short bio for the About page (optional)" />
+              </label>
+            </div>
+          );
+        })}
+        <button className="btn btn-secondary" onClick={addMember} style={{ marginTop: '0.5rem' }}>+ Add Board Member</button>
       </section>
 
       <section className="admin-settings-section">

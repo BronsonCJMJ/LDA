@@ -34,9 +34,13 @@ async function main() {
       currentSeason: { label: 'Current Season', value: '2025–26', description: 'Week 14 of regular play' },
     },
     boardMembers: [
-      { name: 'Des Montague', title: 'President', initials: 'DM' },
-      { name: 'Tony Cullen', title: 'Youth Director', initials: 'TC' },
-      { name: 'Tina Chiasson', title: 'Membership Director', initials: 'TC' },
+      { name: 'Des Montague', title: 'President', initials: 'DM', bio: '', photo: '/executive-members/des-montague.png' },
+      { name: 'Tony Cullen', title: 'Youth Director', initials: 'TC', bio: '', photo: '/executive-members/tony-cullen.png' },
+      { name: 'Patti Cullen', title: 'Secretary', initials: 'PC', bio: '', photo: '/executive-members/patti-cullen.png' },
+      { name: 'Tina Chiasson', title: 'Membership Director', initials: 'TC', bio: '', photo: '/executive-members/tina-chiasson.png' },
+      { name: 'Mark Applin', title: 'Tournament Director', initials: 'MA', bio: '', photo: '/executive-members/mark-applin.png' },
+      { name: 'Charlene Ghaney', title: 'Member at Large', initials: 'CG', bio: '', photo: '/executive-members/charlene-ghaney.png' },
+      { name: 'Douglas Ashini', title: 'Member at Large', initials: 'DA', bio: '', photo: '/executive-members/douglas-ashini.png' },
     ],
     heroText: {
       eyebrow: 'Official Association Portal',

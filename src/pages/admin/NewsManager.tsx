@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import api from '../../services/api';
+import RichTextEditor from '../../components/RichTextEditor';
 
 interface Article {
   id: string;
@@ -109,8 +110,8 @@ export default function NewsManager() {
           </label>
 
           <label>
-            Body (HTML supported)
-            <textarea rows={12} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} required />
+            Body
+            <RichTextEditor value={form.body} onChange={(html) => setForm({ ...form, body: html })} />
           </label>
 
           <label className="admin-checkbox">

@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
 
-interface BoardMember { name: string; title: string; initials: string }
+interface BoardMember {
+  name: string
+  title: string
+  initials: string
+  bio?: string
+  photo?: string
+  photoUrl?: string  // resolved signed URL from API
+}
 
 export default function About() {
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>([])
@@ -12,6 +19,12 @@ export default function About() {
       if (Array.isArray(bm)) setBoardMembers(bm);
     }).catch(() => {});
   }, [])
+
+  const getPhotoSrc = (m: BoardMember): string | null => {
+    if (m.photoUrl) return m.photoUrl;
+    if (m.photo?.startsWith('/')) return m.photo;
+    return null;
+  }
 
   return (
     <section className="page-section">
@@ -38,16 +51,24 @@ export default function About() {
         <h2 className="section-heading" style={{ marginTop: '2rem' }}>Executive Board</h2>
         <div className="board-grid">
           {boardMembers.length > 0 ? (
-            boardMembers.map((m, i) => (
-              <div key={i} className={`board-member animate-in delay-${Math.min(i + 1, 5)}`}>
-                <div className="board-member-avatar">{m.initials || m.name.charAt(0)}</div>
-                <h4>{m.name}</h4>
-                <p>{m.title}</p>
-              </div>
-            ))
+            boardMembers.map((m, i) => {
+              const photoSrc = getPhotoSrc(m);
+              return (
+                <div key={i} className={`board-member animate-in delay-${Math.min(i + 1, 5)}`}>
+                  {photoSrc ? (
+                    <img src={photoSrc} alt={m.name} className="board-member-photo" />
+                  ) : (
+                    <div className="board-member-avatar">{m.initials || m.name.charAt(0)}</div>
+                  )}
+                  <h4>{m.name}</h4>
+                  <p className="board-member-title">{m.title}</p>
+                  {m.bio && <p className="board-member-bio">{m.bio}</p>}
+                </div>
+              );
+            })
           ) : (
             <div className="board-member animate-in delay-1">
-              <div className="board-member-avatar">DM</div>
+              <img src="/executive-members/des-montague.png" alt="Des Montague" className="board-member-photo" />
               <h4>Des Montague</h4>
               <p>President</p>
             </div>

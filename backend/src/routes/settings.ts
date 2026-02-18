@@ -1,14 +1,39 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { clearTon80Cache } from '../services/ton80Api.js';
+import { uploadFile, generateSignedUrl, deleteFile } from '../services/storage.js';
 
 const prisma = new PrismaClient();
 const router = Router();
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
+
 // Keys that contain secrets — never expose publicly
 const SENSITIVE_KEYS = ['ton80'];
+
+// Resolve board member photo URLs (signed URLs for GCS, pass-through for static/local)
+async function resolveBoardMemberPhotos(members: any[]): Promise<any[]> {
+  return Promise.all(
+    members.map(async (m: any) => {
+      if (!m.photo) return m;
+      // Static paths (e.g. /executive-members/foo.png) pass through as-is
+      if (m.photo.startsWith('/')) return m;
+      // GCS object paths need signed URLs
+      const photoUrl = await generateSignedUrl(m.photo);
+      return { ...m, photoUrl };
+    })
+  );
+}
 
 // GET /api/settings — public (sensitive keys stripped)
 router.get('/', async (_req: Request, res: Response, next) => {
@@ -18,6 +43,10 @@ router.get('/', async (_req: Request, res: Response, next) => {
     for (const s of settings) {
       if (SENSITIVE_KEYS.includes(s.key)) continue;
       try { map[s.key] = JSON.parse(s.value); } catch { map[s.key] = s.value; }
+    }
+    // Resolve board member photos
+    if (Array.isArray(map.boardMembers)) {
+      map.boardMembers = await resolveBoardMemberPhotos(map.boardMembers);
     }
     res.json({ success: true, data: map });
   } catch (error) {
@@ -40,6 +69,10 @@ router.get('/all', authenticate, async (_req: Request, res: Response, next) => {
         ...map.ton80,
         apiKey: key.length > 8 ? key.slice(0, 6) + '...' + key.slice(-4) : '••••••••',
       };
+    }
+    // Resolve board member photos for admin preview
+    if (Array.isArray(map.boardMembers)) {
+      map.boardMembers = await resolveBoardMemberPhotos(map.boardMembers);
     }
     res.json({ success: true, data: map });
   } catch (error) {
@@ -73,6 +106,17 @@ router.put('/', authenticate, async (req: Request, res: Response, next) => {
         continue;
       }
 
+      // For boardMembers, strip transient photoUrl before saving
+      if (key === 'boardMembers' && Array.isArray(value)) {
+        const cleaned = value.map(({ photoUrl, ...rest }: any) => rest);
+        await prisma.siteSetting.upsert({
+          where: { key },
+          update: { value: JSON.stringify(cleaned) },
+          create: { key, value: JSON.stringify(cleaned) },
+        });
+        continue;
+      }
+
       const strValue = typeof value === 'string' ? value : JSON.stringify(value);
       await prisma.siteSetting.upsert({
         where: { key },
@@ -91,6 +135,57 @@ router.put('/', authenticate, async (req: Request, res: Response, next) => {
     next(error);
   }
 });
+
+// POST /api/settings/board-member-photo — admin, upload a board member photo
+router.post(
+  '/board-member-photo',
+  authenticate,
+  upload.single('photo'),
+  async (req: Request, res: Response, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: { message: 'No file uploaded' } });
+      }
+
+      const index = parseInt(req.body.index);
+      if (isNaN(index) || index < 0) {
+        return res.status(400).json({ success: false, error: { message: 'Invalid member index' } });
+      }
+
+      // Upload to GCS / local storage
+      const result = await uploadFile(req.file, 'board-members');
+
+      // Update the board member's photo field in settings
+      const existing = await prisma.siteSetting.findUnique({ where: { key: 'boardMembers' } });
+      let members: any[] = [];
+      if (existing) {
+        try { members = JSON.parse(existing.value); } catch { /* ignore */ }
+      }
+
+      if (index < members.length) {
+        // Delete old photo if it was a GCS upload (not a static path)
+        const oldPhoto = members[index].photo;
+        if (oldPhoto && !oldPhoto.startsWith('/')) {
+          await deleteFile(oldPhoto);
+        }
+        members[index].photo = result.url;
+      }
+
+      await prisma.siteSetting.upsert({
+        where: { key: 'boardMembers' },
+        update: { value: JSON.stringify(members) },
+        create: { key: 'boardMembers', value: JSON.stringify(members) },
+      });
+
+      // Return the signed URL for immediate display
+      const photoUrl = await generateSignedUrl(result.url);
+
+      res.json({ success: true, data: { photo: result.url, photoUrl } });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 // POST /api/settings/test-ton80 — admin, test Ton80 API connection
 router.post('/test-ton80', authenticate, async (req: Request, res: Response, next) => {
