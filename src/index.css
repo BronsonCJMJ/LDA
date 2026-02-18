@@ -1070,6 +1070,22 @@ p:last-child { margin-bottom: 0; }
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   text-align: center;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.board-member-clickable {
+  cursor: pointer;
+}
+
+.board-member-clickable:hover {
+  border-color: var(--green-300, #86efac);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.board-member-expanded {
+  border-color: var(--green-400, #4ade80);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
 }
 
 .board-member-avatar {
@@ -1094,6 +1110,12 @@ p:last-child { margin-bottom: 0; }
   object-fit: cover;
   margin: 0 auto var(--space-sm);
   border: 3px solid var(--green-100);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.board-member-photo-lg {
+  width: 100px;
+  height: 100px;
 }
 
 .board-member h4 {
@@ -1105,11 +1127,43 @@ p:last-child { margin-bottom: 0; }
   color: var(--neutral-400);
 }
 
+.board-member-bio-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.board-member-bio-wrap > p {
+  min-height: 0;
+}
+
+.board-member-bio-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 0.5rem;
+}
+
 .board-member-bio {
   font-size: 0.8rem;
   color: var(--neutral-500);
-  margin-top: 0.4rem;
-  line-height: 1.4;
+  line-height: 1.5;
+}
+
+.board-member-more {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--green-600, #16a34a);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.board-member-clickable:hover .board-member-more {
+  opacity: 1;
 }
 
 .board-member p {

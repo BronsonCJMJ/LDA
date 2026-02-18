@@ -7,11 +7,12 @@ interface BoardMember {
   initials: string
   bio?: string
   photo?: string
-  photoUrl?: string  // resolved signed URL from API
+  photoUrl?: string
 }
 
 export default function About() {
   const [boardMembers, setBoardMembers] = useState<BoardMember[]>([])
+  const [expanded, setExpanded] = useState<number | null>(null)
 
   useEffect(() => {
     api.get('/settings').then(({ data }) => {
@@ -25,6 +26,8 @@ export default function About() {
     if (m.photo?.startsWith('/')) return m.photo;
     return null;
   }
+
+  const toggle = (i: number) => setExpanded(expanded === i ? null : i)
 
   return (
     <section className="page-section">
@@ -53,16 +56,29 @@ export default function About() {
           {boardMembers.length > 0 ? (
             boardMembers.map((m, i) => {
               const photoSrc = getPhotoSrc(m);
+              const isExpanded = expanded === i;
+              const hasBio = !!m.bio;
               return (
-                <div key={i} className={`board-member animate-in delay-${Math.min(i + 1, 5)}`}>
+                <div
+                  key={i}
+                  className={`board-member animate-in delay-${Math.min(i + 1, 5)}${hasBio ? ' board-member-clickable' : ''}${isExpanded ? ' board-member-expanded' : ''}`}
+                  onClick={hasBio ? () => toggle(i) : undefined}
+                >
                   {photoSrc ? (
-                    <img src={photoSrc} alt={m.name} className="board-member-photo" />
+                    <img src={photoSrc} alt={m.name} className={`board-member-photo${isExpanded ? ' board-member-photo-lg' : ''}`} />
                   ) : (
                     <div className="board-member-avatar">{m.initials || m.name.charAt(0)}</div>
                   )}
                   <h4>{m.name}</h4>
                   <p className="board-member-title">{m.title}</p>
-                  {m.bio && <p className="board-member-bio">{m.bio}</p>}
+                  {hasBio && (
+                    <div className={`board-member-bio-wrap${isExpanded ? ' board-member-bio-open' : ''}`}>
+                      <p className="board-member-bio">{m.bio}</p>
+                    </div>
+                  )}
+                  {hasBio && !isExpanded && (
+                    <span className="board-member-more">Tap for bio</span>
+                  )}
                 </div>
               );
             })
