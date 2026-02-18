@@ -5,6 +5,7 @@ import multer from 'multer';
 import { validate } from '../middleware/validate.js';
 import { authenticate } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { sendContactNotification, sendFormNotification } from '../services/email.js';
 import { uploadFile, generateSignedUrl } from '../services/storage.js';
 
 const prisma = new PrismaClient();
@@ -47,6 +48,22 @@ router.post(
           status: 'new',
         },
       });
+
+      // Send email notification (don't block the response)
+      if (req.body.formType === 'contact') {
+        sendContactNotification({
+          name: req.body.name,
+          email: req.body.email,
+          data: typeof data === 'object' ? data : {},
+        }).catch(() => {});
+      } else {
+        sendFormNotification({
+          formType: req.body.formType,
+          name: req.body.name,
+          email: req.body.email,
+          data: typeof data === 'object' ? data : {},
+        }).catch(() => {});
+      }
 
       res.status(201).json({ success: true, data: { id: submission.id, message: 'Form submitted successfully' } });
     } catch (error) {
