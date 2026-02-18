@@ -175,17 +175,17 @@ export default function Home() {
             <div className="pathway-card animate-in delay-1">
               <span className="pathway-number">1</span>
               <h3>Register</h3>
-              <p>Secure your spot in the 2026 regional circuit. Open to all skill levels from amateur to semi-pro.</p>
+              <p>Become a member of the Labrador Darts Association. Open to all residents of Labrador.</p>
             </div>
             <div className="pathway-card animate-in delay-2">
               <span className="pathway-number">2</span>
               <h3>Compete</h3>
-              <p>Participate in the Labrador Open, Mixed Doubles, and league nights throughout the winter and spring.</p>
+              <p>Enter LDA sanctioned zone shoots, the Big Land Northern Classic, and the LDA Provincial Championships.</p>
             </div>
             <div className="pathway-card animate-in delay-3">
               <span className="pathway-number">3</span>
               <h3>Advance</h3>
-              <p>Track your performance on our standings board and qualify for the NDFC provincial finals.</p>
+              <p>Earn your place on Team Labrador for the NDFC National Championships as well as opportunities to compete with Team Canada on the WDF Global Stage!</p>
             </div>
           </div>
         </div>
