@@ -46,7 +46,7 @@ export default function About() {
           </div>
           <div className="about-text animate-in delay-2">
             <h2>What We Do</h2>
-            <p>We coordinate the annual competitive season, including regional qualifiers, the Labrador Open, Mixed Doubles tournaments, and league play throughout the winter and spring months.</p>
+            <p>We coordinate the annual competitive season including regional zone shoots, the Big Land Northern Classic, the Labrador Provincial Championships, and represent Labrador on the National stage.</p>
             <p>The LDA also maintains official standings, manages player registration, and serves as the central source of information for all darts-related activities in the region.</p>
           </div>
         </div>
