@@ -31,7 +31,7 @@
                           ▼                             ▼
               ┌───────────────────────┐    ┌────────────────────────┐
               │  Neon PostgreSQL      │    │  Google Cloud Storage   │
-              │  (Serverless)         │    │  (GCS Bucket)           │
+              │  (Serverless, Launch) │    │  (GCS Buckets)          │
               │                       │    │                         │
               │  11 tables:           │    │  Uploaded files:        │
               │  - admins             │    │  - gallery/ (photos)    │
@@ -68,6 +68,11 @@
 
 ### Google Cloud Storage (uploaded files)
 
+| Bucket | Environment | Object Versioning |
+|--------|-------------|-------------------|
+| `lda-production-uploads` | Production | Enabled |
+| `lda-staging-uploads` | Staging | Enabled |
+
 | Folder | Contents |
 |--------|----------|
 | `gallery/` | Event photos uploaded via admin gallery manager |
@@ -75,7 +80,20 @@
 | `board-members/` | Executive board member headshots |
 | `news/` | News article images |
 
-**If GCS files are lost**: Photo URLs in the database become broken links. The actual image files cannot be recovered without backups.
+**If GCS files are lost**: Photo URLs in the database become broken links. However, object versioning is enabled on both buckets, so overwritten or deleted files can be recovered from previous versions.
+
+### Neon Project Details
+
+| Detail | Value |
+|--------|-------|
+| Project name | `lda-website` |
+| Project ID | `shy-frost-41609910` |
+| PostgreSQL version | 17 |
+| Plan | Launch (paid) |
+| Restore window | **7 days** |
+| Production branch | `main` |
+| Staging branch | `staging` |
+| Connection host format | `ep-twilight-water-a168aof6-pooler.ca-east-2.aws.neon.tech` |
 
 ---
 
@@ -143,9 +161,9 @@ feature branch → staging branch → main branch
 | Component | Production | Staging |
 |-----------|-----------|---------|
 | Cloud Run service | `labradordarts` | `labradordarts-staging` |
-| Database | Neon production branch | Neon `staging` branch |
-| File storage | Production GCS bucket | Staging GCS bucket |
-| Domain | `labradordarts.ca` | `staging.labradordarts.ca` |
+| Database | Neon `main` branch | Neon `staging` branch |
+| File storage | `lda-production-uploads` | `lda-staging-uploads` |
+| Domain | `labradordarts.ca` | Cloud Run URL (bookmarked) |
 | Build trigger | Push to `main` | Push to `staging` |
 
 ### Setting Up Staging (GCP Console Steps)
@@ -180,62 +198,113 @@ feature branch → staging branch → main branch
 
 ## Data Backup Strategy (3-2-1 Method)
 
-### Current Risk Assessment
+### Why This Matters
 
-**Neon restore window: 0.3 days (~7 hours)**
+The association has invested significant effort in news articles, tournament results, player statistics, event photos, and member registrations. Losing this data would be catastrophic and unrecoverable without backups.
 
-This means if data is accidentally deleted (a bug, a bad migration, human error), you have approximately 7 hours to notice and restore. After that window, the data is **permanently lost**.
+### Current 3-2-1 Setup (Completed Feb 2026)
 
-The association has invested significant effort in:
-- Writing news articles and tournament reports
-- Recording tournament results and player statistics
-- Uploading event photos to the gallery
-- Managing member registrations
-
-**Losing this data would be catastrophic and unrecoverable without backups.**
-
-### Recommended 3-2-1 Setup
-
-| Copy | Type | Where | How |
-|------|------|-------|-----|
+| Copy | Type | Where | Status |
+|------|------|-------|--------|
 | 1 (Primary) | Live database | Neon production branch | Always current |
-| 2 (Automated) | Point-in-time recovery | Neon PITR | Increase restore window to 7+ days |
-| 3 (Export) | Database dump | GCS bucket or local | Weekly `pg_dump` export |
+| 2 (Automated) | Point-in-time recovery | Neon PITR — **7-day window** | Active (Launch plan) |
+| 3 (Export) | Database dump + GCS files | `D:\LDA-Storage-Backup` (local drive) | Run weekly before major changes |
 
-### Immediate Actions Required
+### What's Protected
 
-#### 1. Increase Neon Restore Window (CRITICAL)
-- Go to Neon Dashboard → Project Settings → Storage
-- Increase restore window to **7 days** (requires Neon paid plan)
-- This gives you 7 days to notice and recover from any data loss
+| Data | Protection |
+|------|-----------|
+| Database (all 11 tables) | Neon 7-day PITR + weekly pg_dump to D: drive |
+| GCS uploaded files | Object versioning on bucket + weekly gsutil rsync to D: drive |
+| Code | GitHub repository (BronsonCJMJ/LDA) |
 
-#### 2. Enable GCS Object Versioning
-- Go to GCP Console → Cloud Storage → Select your bucket
-- Click "Protection" tab → Enable "Object versioning"
-- This means overwritten or deleted files can be recovered
-- Set a lifecycle rule to delete old versions after 90 days (to control costs)
+---
 
-#### 3. Set Up Weekly Database Exports (Recommended)
-You can export the database weekly using `pg_dump`:
+### Running a Backup
+
+The backup script lives at `D:\LDA-Storage-Backup\backup-lda.sh` and does three things:
+1. Dumps the Neon PostgreSQL database using `pg_dump` (PostgreSQL 17)
+2. Syncs all GCS production files using `gsutil rsync`
+3. Auto-cleans backups older than 28 days
+
+**Run it before any major changes (migrations, bulk edits, deployments):**
+
 ```bash
-# Run locally or set up as a scheduled Cloud Run job
-pg_dump "$DATABASE_URL" --format=custom --file=lda-backup-$(date +%Y%m%d).dump
-```
-Store exports in a separate GCS bucket or download locally.
+# Set the Neon production connection string (get from Neon Dashboard → Connection Details)
+export LDA_DATABASE_URL='postgresql://neondb_owner:<password>@ep-twilight-water-a168aof6-pooler.ca-east-2.aws.neon.tech/neondb?sslmode=require'
 
-### How to Restore from Neon PITR
+# Run the backup
+bash /mnt/d/LDA-Storage-Backup/backup-lda.sh
+```
+
+**Requirements:**
+- `postgresql-client-17` must be installed (Neon runs PostgreSQL 17)
+- `gsutil` must be installed and authenticated (`gcloud auth login`)
+- The `LDA_DATABASE_URL` env var must be set with the production connection string
+
+**Output:**
+- Database dump: `D:\LDA-Storage-Backup\db-backup-YYYYMMDD-HHMMSS.dump`
+- GCS files: `D:\LDA-Storage-Backup\gcs-backup-YYYYMMDD-HHMMSS/`
+
+**Recommended frequency:** Weekly, or before any database migration or major code deployment.
+
+### Installing pg_dump (PostgreSQL 17)
+
+If `pg_dump` is not installed or is the wrong version:
+
+```bash
+# Add PostgreSQL 17 apt repository
+sudo apt install -y postgresql-common
+sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+sudo apt update
+sudo apt install -y postgresql-client-17
+```
+
+The backup script uses `/usr/lib/postgresql/17/bin/pg_dump` directly to ensure version compatibility with Neon.
+
+---
+
+### How to Restore
+
+#### Restore from Neon PITR (database — last 7 days)
 1. Go to Neon Dashboard → Branches
 2. Click "Restore" on the production branch
 3. Select the point in time to restore to
 4. Neon creates a new branch at that point — verify the data
 5. Switch the production branch to the restored version
 
+#### Restore from pg_dump backup (database — older than 7 days)
+```bash
+# Restore a specific dump file to the Neon database
+pg_restore --dbname="$LDA_DATABASE_URL" --clean --if-exists /mnt/d/LDA-Storage-Backup/db-backup-XXXXXXXX-XXXXXX.dump
+```
+
+#### Restore GCS files (from local backup)
+```bash
+# Sync files back to the production GCS bucket
+gsutil -m rsync -r /mnt/d/LDA-Storage-Backup/gcs-backup-XXXXXXXX-XXXXXX/ gs://lda-production-uploads/
+```
+
+#### Restore GCS files (from object versioning)
+```bash
+# List previous versions of a deleted/overwritten file
+gsutil ls -la gs://lda-production-uploads/gallery/some-photo.jpg
+
+# Restore a specific version by copying it back
+gsutil cp gs://lda-production-uploads/gallery/some-photo.jpg#<generation> gs://lda-production-uploads/gallery/some-photo.jpg
+```
+
+---
+
 ### Verification Checklist
-- [ ] Neon restore window is at least 7 days
-- [ ] GCS object versioning is enabled
-- [ ] Weekly database exports are being stored
+- [x] Neon restore window is 7 days (Launch plan, configured Feb 2026)
+- [x] GCS object versioning is enabled on `lda-production-uploads`
+- [x] GCS object versioning is enabled on `lda-staging-uploads`
+- [x] Backup script created and tested (`D:\LDA-Storage-Backup\backup-lda.sh`)
+- [x] First successful backup completed (Feb 27, 2026 — 27KB database dump)
 - [ ] Test a restore from Neon PITR at least once per quarter
 - [ ] Verify GCS file recovery works (delete a test file, restore from version)
+- [ ] Set up a lifecycle rule on GCS to delete old versions after 90 days
 
 ---
 
@@ -254,4 +323,12 @@ cd backend && npx prisma db push     # Push schema to database
 # Build & test production image locally
 docker build -t lda-local .
 docker run -p 8080:8080 --env-file backend/.env lda-local
+
+# Backup (run from WSL)
+export LDA_DATABASE_URL='postgresql://neondb_owner:<password>@ep-twilight-water-a168aof6-pooler.ca-east-2.aws.neon.tech/neondb?sslmode=require'
+bash /mnt/d/LDA-Storage-Backup/backup-lda.sh
+
+# List existing backups
+ls -lh /mnt/d/LDA-Storage-Backup/db-backup-*.dump
+ls -d /mnt/d/LDA-Storage-Backup/gcs-backup-*
 ```
