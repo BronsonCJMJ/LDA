@@ -191,3 +191,13 @@ model SiteSetting {
 
   @@map("site_settings")
 }
+
+model PageView {
+  id    String   @id @default(uuid())
+  path  String
+  date  DateTime @db.Date
+  count Int      @default(1)
+
+  @@unique([path, date])
+  @@map("page_views")
+}

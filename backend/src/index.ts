@@ -16,6 +16,7 @@ import galleryRoutes from './routes/gallery.js';
 import documentRoutes from './routes/documents.js';
 import formRoutes from './routes/forms.js';
 import settingsRoutes from './routes/settings.js';
+import pageviewRoutes from './routes/pageviews.js';
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.use('/api/gallery', galleryRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/forms', formRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/pageviews', pageviewRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

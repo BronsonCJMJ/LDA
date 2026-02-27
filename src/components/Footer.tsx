@@ -1,6 +1,16 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 
 export default function Footer() {
+  const [visits, setVisits] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('/api/pageviews/total')
+      .then(r => r.json())
+      .then(d => setVisits(d.data?.total || 0))
+      .catch(() => {})
+  }, [])
+
   return (
     <footer className="site-footer">
       <div className="footer-inner">
@@ -35,6 +45,11 @@ export default function Footer() {
         <div className="footer-bottom">
           <p>&copy; 2026 Labrador Darts Association. All rights reserved.</p>
           <p>Affiliated with NDFC Canada</p>
+          {visits !== null && visits > 0 && (
+            <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--neutral-400)' }}>
+              {visits.toLocaleString()} site visits
+            </p>
+          )}
         </div>
       </div>
     </footer>

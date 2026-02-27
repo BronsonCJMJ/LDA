@@ -10,6 +10,7 @@ const adminNav = [
   { path: '/admin/documents', label: 'Documents', icon: '◰' },
   { path: '/admin/forms', label: 'Form Submissions', icon: '◳' },
   { path: '/admin/settings', label: 'Site Settings', icon: '◎' },
+  { path: '/admin/analytics', label: 'Analytics', icon: '▦' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

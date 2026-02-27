@@ -25,6 +25,7 @@ import GalleryManager from './pages/admin/GalleryManager'
 import DocumentManager from './pages/admin/DocumentManager'
 import FormSubmissions from './pages/admin/FormSubmissions'
 import SiteSettings from './pages/admin/SiteSettings'
+import Analytics from './pages/admin/Analytics'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -43,6 +44,20 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   )
 }
 
+function PageViewTracker() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (!pathname.startsWith('/admin')) {
+      fetch('/api/pageviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: pathname }),
+      }).catch(() => {})
+    }
+  }, [pathname])
+  return null
+}
+
 export default function App() {
   const { pathname } = useLocation()
   const isAdmin = pathname.startsWith('/admin')
@@ -50,6 +65,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ScrollToTop />
+      <PageViewTracker />
       {isAdmin ? (
         <Routes>
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -61,6 +77,7 @@ export default function App() {
           <Route path="/admin/documents" element={<ProtectedRoute><DocumentManager /></ProtectedRoute>} />
           <Route path="/admin/forms" element={<ProtectedRoute><FormSubmissions /></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute><SiteSettings /></ProtectedRoute>} />
+          <Route path="/admin/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         </Routes>
       ) : (
         <PublicLayout>
