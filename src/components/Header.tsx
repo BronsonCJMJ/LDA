@@ -21,34 +21,51 @@ export default function Header() {
   }, [menuOpen])
 
   return (
-    <header className="site-header">
-      <div className="header-inner">
-        <Link to="/" className="brand" onClick={() => setMenuOpen(false)}>
-          <img src="/logo.png" alt="LDA Logo" className="brand-logo" />
-          <span>Labrador Darts</span>
-        </Link>
+    <>
+      <header className="site-header">
+        <div className="header-inner">
+          <Link to="/" className="brand" onClick={() => setMenuOpen(false)}>
+            <img src="/logo.png" alt="LDA Logo" className="brand-logo" />
+            <span>Labrador Darts</span>
+          </Link>
 
-        <button
-          className={`menu-toggle ${menuOpen ? 'open' : ''}`}
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          <span /><span /><span />
-        </button>
+          <button
+            className={`menu-toggle ${menuOpen ? 'open' : ''}`}
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
+          >
+            <span /><span /><span />
+          </button>
 
-        <nav className={`main-nav ${menuOpen ? 'open' : ''}`}>
-          {navLinks.map(link => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`nav-link ${pathname === link.path ? 'active' : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
-    </header>
+          {/* Desktop nav stays inside header for normal flow */}
+          <nav className="main-nav desktop-nav">
+            {navLinks.map(link => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`nav-link ${pathname === link.path ? 'active' : ''}`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      {/* Mobile nav rendered outside header to escape backdrop-filter containment */}
+      {menuOpen && <div className="mobile-nav-overlay" onClick={() => setMenuOpen(false)} />}
+      <nav className={`main-nav mobile-nav ${menuOpen ? 'open' : ''}`}>
+        {navLinks.map(link => (
+          <Link
+            key={link.path}
+            to={link.path}
+            className={`nav-link ${pathname === link.path ? 'active' : ''}`}
+            onClick={() => setMenuOpen(false)}
+          >
+            {link.label}
+          </Link>
+        ))}
+      </nav>
+    </>
   )
 }
