@@ -44,12 +44,12 @@ export default function Footer() {
         </div>
         <div className="footer-bottom">
           <p>&copy; 2026 Labrador Darts Association. All rights reserved.</p>
-          <p>Affiliated with NDFC Canada</p>
           {visits !== null && visits > 0 && (
-            <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--neutral-400)' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--neutral-400)' }}>
               {visits.toLocaleString()} site visits
             </p>
           )}
+          <p>Affiliated with NDFC Canada</p>
         </div>
       </div>
     </footer>

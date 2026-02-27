@@ -68,10 +68,11 @@
 
 ### Google Cloud Storage (uploaded files)
 
-| Bucket | Environment | Object Versioning |
-|--------|-------------|-------------------|
-| `lda-production-uploads` | Production | Enabled |
-| `lda-staging-uploads` | Staging | Enabled |
+| Bucket | Environment | Region | Object Versioning |
+|--------|-------------|--------|-------------------|
+| `lda-uploads` | **Production** | us-central1 | Enabled |
+| `lda-staging-uploads` | Staging | northamerica-northeast1 | Enabled |
+| `lda-production-uploads` | Unused (empty) | northamerica-northeast1 | Enabled |
 
 | Folder | Contents |
 |--------|----------|
@@ -162,7 +163,7 @@ feature branch → staging branch → main branch
 |-----------|-----------|---------|
 | Cloud Run service | `labradordarts` | `labradordarts-staging` |
 | Database | Neon `main` branch | Neon `staging` branch |
-| File storage | `lda-production-uploads` | `lda-staging-uploads` |
+| File storage | `lda-uploads` | `lda-staging-uploads` |
 | Domain | `labradordarts.ca` | Cloud Run URL (bookmarked) |
 | Build trigger | Push to `main` | Push to `staging` |
 
@@ -282,23 +283,23 @@ pg_restore --dbname="$LDA_DATABASE_URL" --clean --if-exists /mnt/d/LDA-Storage-B
 #### Restore GCS files (from local backup)
 ```bash
 # Sync files back to the production GCS bucket
-gsutil -m rsync -r /mnt/d/LDA-Storage-Backup/gcs-backup-XXXXXXXX-XXXXXX/ gs://lda-production-uploads/
+gsutil -m rsync -r /mnt/d/LDA-Storage-Backup/gcs-backup-XXXXXXXX-XXXXXX/ gs://lda-uploads/
 ```
 
 #### Restore GCS files (from object versioning)
 ```bash
 # List previous versions of a deleted/overwritten file
-gsutil ls -la gs://lda-production-uploads/gallery/some-photo.jpg
+gsutil ls -la gs://lda-uploads/gallery/some-photo.jpg
 
 # Restore a specific version by copying it back
-gsutil cp gs://lda-production-uploads/gallery/some-photo.jpg#<generation> gs://lda-production-uploads/gallery/some-photo.jpg
+gsutil cp gs://lda-uploads/gallery/some-photo.jpg#<generation> gs://lda-uploads/gallery/some-photo.jpg
 ```
 
 ---
 
 ### Verification Checklist
 - [x] Neon restore window is 7 days (Launch plan, configured Feb 2026)
-- [x] GCS object versioning is enabled on `lda-production-uploads`
+- [x] GCS object versioning is enabled on `lda-uploads` (production)
 - [x] GCS object versioning is enabled on `lda-staging-uploads`
 - [x] Backup script created and tested (`D:\LDA-Storage-Backup\backup-lda.sh`)
 - [x] First successful backup completed (Feb 27, 2026 — 27KB database dump)
