@@ -1853,12 +1853,18 @@ a.news-page-card:hover .news-read-more {
 
 /* ---- RESPONSIVE ---- */
 @media (max-width: 900px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
   :root {
     --header-height: 64px;
   }
 
   .menu-toggle {
     display: flex;
+    z-index: 201;
+    position: relative;
   }
 
   .main-nav {
@@ -1874,10 +1880,22 @@ a.news-page-card:hover .news-read-more {
     box-shadow: var(--shadow-xl);
     transform: translateX(100%);
     transition: transform var(--transition);
+    z-index: 200;
   }
 
   .main-nav.open {
     transform: translateX(0);
+  }
+
+  .main-nav.open::before {
+    content: '';
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: -1;
   }
 
   .nav-link {

@@ -29,7 +29,7 @@ export default function Footer() {
           <div className="footer-col">
             <h4>Contact</h4>
             <p>Labrador, NL, Canada</p>
-            <p>info@labradordarts.ca</p>
+            <p><a href="mailto:labradordarts23@gmail.com">labradordarts23@gmail.com</a></p>
           </div>
         </div>
         <div className="footer-bottom">

@@ -1,0 +1,42 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/labradordarts-staging:$COMMIT_SHA'
+      - '-t'
+      - '${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/labradordarts-staging:latest'
+      - '.'
+
+  # Push the image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/labradordarts-staging'
+
+  # Deploy to Cloud Run staging service
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'update'
+      - 'labradordarts-staging'
+      - '--image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/labradordarts-staging:$COMMIT_SHA'
+      - '--region=${_DEPLOY_REGION}'
+      - '--platform=managed'
+
+substitutions:
+  _AR_HOSTNAME: northamerica-northeast1-docker.pkg.dev
+  _AR_PROJECT_ID: labradordartsassociation
+  _AR_REPOSITORY: cloud-run-source-deploy
+  _DEPLOY_REGION: northamerica-northeast1
+
+images:
+  - '${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/labradordarts-staging:$COMMIT_SHA'
+  - '${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/labradordarts-staging:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
