@@ -126,6 +126,7 @@ export default function SiteSettings() {
   };
 
   const announcement = settings.announcement || { enabled: true, text: '', linkText: '', linkUrl: '' };
+  const liveBanner = settings.liveBanner || { enabled: false, title: '', subtitle: '', linkUrl: '' };
   const stats = settings.stats || { nextTournament: { label: '', value: '', description: '' }, activeMembers: { label: '', value: '', description: '' }, currentSeason: { label: '', value: '', description: '' } };
   const heroText = settings.heroText || { eyebrow: '', title: '', subtitle: '' };
 
@@ -150,6 +151,22 @@ export default function SiteSettings() {
           <label>Text <input type="text" value={announcement.text} onChange={(e) => update('announcement', { ...announcement, text: e.target.value })} /></label>
           <label>Link Text <input type="text" value={announcement.linkText} onChange={(e) => update('announcement', { ...announcement, linkText: e.target.value })} /></label>
           <label>Link URL <input type="text" value={announcement.linkUrl} onChange={(e) => update('announcement', { ...announcement, linkUrl: e.target.value })} /></label>
+        </div>
+      </section>
+
+      <section className="admin-settings-section">
+        <h2>Live Event Banner</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+          Display a prominent banner on the homepage for live events (e.g. DartConnect live scores).
+        </p>
+        <label className="admin-checkbox">
+          <input type="checkbox" checked={liveBanner.enabled} onChange={(e) => update('liveBanner', { ...liveBanner, enabled: e.target.checked })} />
+          Show live event banner
+        </label>
+        <div className="admin-form-grid">
+          <label>Title <input type="text" value={liveBanner.title} onChange={(e) => update('liveBanner', { ...liveBanner, title: e.target.value })} placeholder="e.g. LDA Provincial Championships 2026" /></label>
+          <label>Subtitle <input type="text" value={liveBanner.subtitle} onChange={(e) => update('liveBanner', { ...liveBanner, subtitle: e.target.value })} placeholder="e.g. Watch live scores on DartConnect TV" /></label>
+          <label>Link URL <input type="text" value={liveBanner.linkUrl} onChange={(e) => update('liveBanner', { ...liveBanner, linkUrl: e.target.value })} placeholder="e.g. https://tv.dartconnect.com/event/ldaprovincial26" /></label>
         </div>
       </section>
 

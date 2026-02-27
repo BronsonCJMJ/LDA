@@ -17,6 +17,7 @@ const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 export default function Home() {
   const [stats, setStats] = useState<Record<string, StatCard>>({})
   const [heroText, setHeroText] = useState({ eyebrow: 'Official Association Portal', title: 'Labrador Darts\nAssociation', subtitle: 'The central hub for tournament schedules, league standings, and community news across the Big Land.' })
+  const [liveBanner, setLiveBanner] = useState<{ enabled: boolean; title: string; subtitle: string; linkUrl: string } | null>(null)
   const [news, setNews] = useState<NewsItem[]>([])
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [documents, setDocuments] = useState<Doc[]>([])
@@ -26,6 +27,7 @@ export default function Home() {
       const s = data.data
       if (s?.stats) setStats(s.stats)
       if (s?.heroText) setHeroText({ ...heroText, ...s.heroText })
+      if (s?.liveBanner?.enabled && s.liveBanner.title) setLiveBanner(s.liveBanner)
     }).catch(() => {})
 
     api.get('/news?limit=3').then(({ data }) => setNews(data.data?.articles || [])).catch(() => {})
@@ -68,6 +70,47 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Live Event Banner */}
+      {liveBanner && (
+        <section className="live-banner">
+          <div className="container">
+            {liveBanner.linkUrl ? (
+              <a
+                href={liveBanner.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="live-banner-link"
+              >
+                <div className="live-banner-content">
+                  <div className="live-badge">
+                    <span className="live-dot" />
+                    LIVE
+                  </div>
+                  <div className="live-banner-text">
+                    <strong>{liveBanner.title}</strong>
+                    {liveBanner.subtitle && <span>{liveBanner.subtitle}</span>}
+                  </div>
+                </div>
+                <span className="live-banner-arrow">&rarr;</span>
+              </a>
+            ) : (
+              <div className="live-banner-link" style={{ cursor: 'default' }}>
+                <div className="live-banner-content">
+                  <div className="live-badge">
+                    <span className="live-dot" />
+                    LIVE
+                  </div>
+                  <div className="live-banner-text">
+                    <strong>{liveBanner.title}</strong>
+                    {liveBanner.subtitle && <span>{liveBanner.subtitle}</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Stats */}
       <section className="stats-section">
